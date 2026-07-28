@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER_CORE // Terminal OS v9.0.4</title>
+    <style>
+        /* ==========================================
+           1. RESET & SYSTEM VARIABLES
+           ========================================== */
+        :root {
+            --bg-color: #020804;
+            --main-green: #00ff66;
+            --dim-green: #008833;
+            --alert-red: #ff3333;
+            --warn-yellow: #ffcc00;
+            --info-blue: #00ccff;
+            --panel-bg: rgba(0, 20, 8, 0.88);
+            --font-stack: 'Consolas', 'Courier New', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--main-green);
+            font-family: var(--font-stack);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            text-shadow: 0 0 4px rgba(0, 255, 102, 0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ==========================================
+           2. CRT SCANLINES & BACKGROUND CANVAS
+           ========================================== */
+        .crt-scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            opacity: 0.35;
+        }
+
+        /* ==========================================
+           3. LOBBY SCREEN (WITH ADS)
+           ========================================== */
+        #lobby-screen {
+            position: relative;
+            z-index: 10;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            gap: 25px;
+            background: rgba(2, 8, 4, 0.75);
+        }
+
+        .lobby-card {
+            background: var(--panel-bg);
+            border: 2px solid var(--main-green);
+            box-shadow: 0 0 30px rgba(0, 255, 102, 0.3);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .lobby-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            color: var(--main-green);
+            text-shadow: 0 0 10px var(--main-green);
+        }
+
+        .lobby-desc {
+            color: #cceedd;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .btn-start-hacking {
+            display: inline-block;
+            background: #000;
+            color: var(--main-green);
+            border: 2px solid var(--main-green);
+            padding: 18px 40px;
+            font-family: var(--font-stack);
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.4);
+            transition: all 0.25s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-start-hacking:hover {
+            background: var(--main-green);
+            color: #000;
+            box-shadow: 0 0 35px var(--main-green);
+            transform: scale(1.05);
+        }
+
+        .lobby-ad-space {
+            width: 100%;
+            max-width: 728px;
+            min-height: 90px;
+            border: 1px dashed var(--dim-green);
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            font-size: 12px;
+            color: var(--dim-green);
+            text-align: center;
+        }
+
+        /* ==========================================
+           4. MAIN TERMINAL WORKSPACE
+           ========================================== */
+        #main-app {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            z-index: 5;
+        }
+
+        .hud-header {
+            background: rgba(0, 25, 10, 0.95);
+            border-bottom: 2px solid var(--main-green);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            padding: 15px;
+            gap: 15px;
+            height: calc(100vh - 50px);
+        }
+
+        .terminal-panel {
+            flex: 2;
+            background: var(--panel-bg);
+            border: 1px solid var(--main-green);
+            box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-panel {
+            flex: 1;
+            max-width: 320px;
+            background: var(--panel-bg);
+            border: 1px solid var(--main-green);
+            box-shadow: 0 0 20px rgba(0, 255, 102, 0.15);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        .console-header {
+            background: rgba(0, 40, 15, 0.9);
+            padding: 8px 15px;
+            border-bottom: 1px solid var(--dim-green);
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #console-output {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap; /* Keeps code lines structured without breaking unnecessarily */
+        }
+
+        .log-line { margin-bottom: 4px; word-break: break-all; }
+        .log-success { color: var(--main-green); }
+        .log-warn { color: var(--warn-yellow); text-shadow: 0 0 4px var(--warn-yellow); }
+        .log-danger { color: var(--alert-red); text-shadow: 0 0 6px var(--alert-red); font-weight: bold; }
+        .log-info { color: var(--info-blue); text-shadow: 0 0 4px var(--info-blue); }
+        .log-dim { color: var(--dim-green); }
+
+        .command-bar {
+            background: rgba(0, 15, 5, 0.95);
+            border-top: 1px solid var(--main-green);
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #cmd-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--main-green);
+            font-family: var(--font-stack);
+            font-size: 15px;
+            outline: none;
+            text-shadow: 0 0 4px rgba(0, 255, 102, 0.6);
+        }
+
+        .widget-card {
+            border: 1px dashed var(--dim-green);
+            background: rgba(0, 10, 3, 0.6);
+            padding: 12px;
+            border-radius: 3px;
+        }
+
+        .widget-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--dim-green);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            color: var(--info-blue);
+        }
+
+        .btn-matrix {
+            width: 100%;
+            background: #000;
+            color: var(--main-green);
+            border: 1px solid var(--main-green);
+            padding: 8px 12px;
+            font-family: var(--font-stack);
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-matrix:hover {
+            background: var(--main-green);
+            color: #000;
+            box-shadow: 0 0 10px var(--main-green);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="crt-scanlines"></div>
+    <canvas id="matrix-canvas"></canvas>
+
+    <!-- SECTION A: LOBBY SCREEN (WITH ADS) -->
+    <div id="lobby-screen">
+        <div class="lobby-card">
+            <div class="lobby-title">[ CYBER_CORE_OS ]</div>
+            <p class="lobby-desc">Welcome to the central security terminal interface. Click start or press F11 anytime for full-screen immersive mode.</p>
+            
+            <button class="btn-start-hacking" onclick="enterTerminal()">START HACKING</button>
+        </div>
+
+        <div class="lobby-ad-space">
+            <span>[ ADVERTISEMENT SPACE ]</span>
+            <p>Paste your Google AdSense code snippet inside this block for lobby monetization.</p>
+        </div>
+    </div>
+
+    <!-- SECTION B: MAIN TERMINAL (NO ADS) -->
+    <div id="main-app">
+        <header class="hud-header">
+            <div><strong>[CYBER_CORE_OS]</strong> <span style="color:var(--dim-green);">// SYS_VER: 9.0.4</span></div>
+            <div>STATUS: <span style="color:var(--main-green);">ONLINE</span> | AUDIO: <span id="audio-status" style="color:var(--warn-yellow);">MUTED</span> | FULLSCREEN: <span style="color:var(--info-blue);">PRESS F11</span></div>
+        </header>
+
+        <main class="workspace">
+            <section class="terminal-panel">
+                <div class="console-header">
+                    <span>TERMINAL_SESSION: /dev/tty0</span>
+                    <span>TYPE 'help' FOR COMMAND LIST</span>
+                </div>
+
+                <div id="console-output">
+                    <div class="log-line log-dim">[SYSTEM_BOOT] Core terminal active...</div>
+                    <div class="log-line log-success">=====================================================</div>
+                    <div class="log-line log-success">  WELCOME TO CYBER_CORE TERMINAL SYSTEM v9.0.4</div>
+                    <div class="log-line log-success">  Type 'help' to view available system commands.</div>
+                    <div class="log-line log-success">  Type 'freewrite' or click button to start fast typing.</div>
+                    <div class="log-line log-success">=====================================================</div>
+                </div>
+
+                <div class="command-bar">
+                    <span style="color:var(--main-green); font-weight:bold;">guest@cybercore:~$</span>
+                    <input type="text" id="cmd-input" autofocus placeholder="Type command here..." autocomplete="off">
+                </div>
+            </section>
+
+            <aside class="sidebar-panel">
+                <div class="widget-card">
+                    <div class="widget-title">Quick Commands</div>
+                    <button class="btn-matrix" onclick="executeQuickCmd('help')">HELP MENU</button>
+                    <button class="btn-matrix" onclick="executeQuickCmd('scan')">RUN SYSTEM SCAN</button>
+                    <button class="btn-matrix" onclick="executeQuickCmd('freewrite')">FREE WRITE MODE</button>
+                    <button class="btn-matrix" onclick="executeQuickCmd('blogs')">READ ARTICLES</button>
+                    <button class="btn-matrix" onclick="executeQuickCmd('clear')">CLEAR SCREEN</button>
+                    <button class="btn-matrix" onclick="toggleAudio()">TOGGLE AUDIO SOUNDS</button>
+                </div>
+
+                <div class="widget-card">
+                    <div class="widget-title">System Metrics</div>
+                    <div style="font-size: 11px; line-height: 1.8;">
+                        <div>CPU LOAD: <span id="cpu-val" style="color:var(--main-green);">14%</span></div>
+                        <div>MEM USAGE: <span style="color:var(--warn-yellow);">412MB / 2048MB</span></div>
+                        <div>ENCRYPTION: <span style="color:var(--info-blue);">AES-256-GCM</span></div>
+                        <div>LATENCY: <span style="color:var(--main-green);">12ms</span></div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- SECTION C: JAVASCRIPT LOGIC -->
+    <script>
+        /* Matrix Code Rain Canvas */
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const alphabet = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const fontSize = 16;
+        let columns = Math.floor(canvas.width / fontSize);
+        let rainDrops = Array(columns).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(2, 8, 4, 0.08)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff66';
+            ctx.font = fontSize + 'px monospace';
+            for (let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+                if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) rainDrops[i] = 0;
+                rainDrops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 33);
+
+        /* Enter Terminal from Lobby */
+        function enterTerminal() {
+            document.getElementById('lobby-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'flex';
+            document.getElementById('cmd-input').focus();
+        }
+
+        /* F11 Fullscreen Handler */
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {});
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            }
+        });
+
+        /* Web Audio Synthesizer */
+        let audioEnabled = false;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playBeep(freq = 800, duration = 0.04) {
+            if (!audioEnabled) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { }
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            if (audioEnabled && audioCtx.state === 'suspended') audioCtx.resume();
+            document.getElementById('audio-status').textContent = audioEnabled ? 'ENABLED' : 'MUTED';
+            printLog(audioEnabled ? '[AUDIO] Audio enabled.' : '[AUDIO] Audio muted.', 'log-info');
+        }
+
+        /* Terminal Logging & Full-Length Line Free Write */
+        const consoleOutput = document.getElementById('console-output');
+        const cmdInput = document.getElementById('cmd-input');
+        let isFreeWriteActive = false;
+        let lineIndex = 0;
+
+        // Structured array of full-length C++ / Kernel exploit code lines
+        const codeLines = [
+            "int sock = socket(AF_INET, SOCK_STREAM, 0); struct sockaddr_in server;",
+            "server.sin_addr.s_addr = inet_addr(\"192.168.1.104\"); server.sin_port = htons(8080);",
+            "if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) { return -1; }",
+            "char NOP_sled[1024]; memset(NOP_sled, 0x90, sizeof(NOP_sled));",
+            "send(sock, NOP_sled, sizeof(NOP_sled), 0); // INJECTING NOP SLED BUFFER...",
+            "uint32_t payload_addr = 0x7fffffffe420; // OVERWRITING INSTRUCTION POINTER",
+            "asm(\"mov $0x3b, %rax; mov $0x68732f6e69622f, %rbx; push %rbx;\");",
+            "// ROOT PRIVILEGES GRANTED. DUMPING KERNEL MEMORY HASHES...",
+            "0x00FF4A: 41 42 43 44 45 46 31 32 33 34 [AES-256 PARSED SUCCESS]",
+            "STATUS 200 OK: CONNECTION SECURED THROUGH LOCAL PROXY HOOK."
+        ];
+
+        function printLog(text, className = 'log-success') {
+            const line = document.createElement('div');
+            line.className = `log-line ${className}`;
+            line.textContent = text;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function handleCommand(cmd) {
+            const cleanCmd = cmd.trim().toLowerCase();
+            printLog(`guest@cybercore:~$ ${cmd}`, 'log-dim');
+            playBeep(600);
+            if (cleanCmd === '') return;
+
+            switch (cleanCmd) {
+                case 'help':
+                    printLog('--- SYSTEM COMMANDS ---', 'log-info');
+                    printLog('  freewrite : Start fast typing hacker mode');
+                    printLog('  clear     : Clear console screen');
+                    printLog('  scan      : Run diagnostic scan');
+                    break;
+                case 'freewrite':
+                    isFreeWriteActive = true;
+                    printLog('[FREE WRITE MODE ACTIVE] Press ANY key repeatedly! (Press ESC to exit)', 'log-warn');
+                    break;
+                case 'clear':
+                    consoleOutput.innerHTML = '';
+                    break;
+                case 'scan':
+                    printLog('[SCAN] Running node security check... [SAFE]', 'log-info');
+                    break;
+                default:
+                    printLog(`Command not recognized: '${cleanCmd}'. Type 'help' for options.`, 'log-danger');
+            }
+        }
+
+        function executeQuickCmd(cmd) {
+            handleCommand(cmd);
+        }
+
+        cmdInput.addEventListener('keydown', (e) => {
+            playBeep(400);
+            if (e.key === 'Enter') {
+                const val = cmdInput.value;
+                cmdInput.value = '';
+                handleCommand(val);
+            }
+        });
+
+        /* Full Line Free-Write Engine */
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isFreeWriteActive) {
+                isFreeWriteActive = false;
+                printLog('[FREE WRITE MODE DISABLED]', 'log-warn');
+                return;
+            }
+            if (isFreeWriteActive && e.target.id !== 'cmd-input' && e.key !== 'F11') {
+                e.preventDefault();
+                printLog(codeLines[lineIndex % codeLines.length], 'log-success');
+                lineIndex++;
+                playBeep(1100 + (Math.random() * 300), 0.02);
+            }
+        });
+
+        setInterval(() => {
+            document.getElementById('cpu-val').textContent = (Math.floor(Math.random() * 20) + 10) + '%';
+        }, 3000);
+    </script>
+</body>
+</html>
