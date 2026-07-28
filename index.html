@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYBER_CORE // Terminal OS v9.0.4</title>
 
-    <!-- Google AdSense Code -->
+    <!-- Google AdSense Meta Tag Verification -->
+    <meta name="google-adsense-account" content="ca-pub-2531474739373644">
+
+    <!-- Google AdSense Code Snippet -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2531474739373644"
          crossorigin="anonymous"></script>
 
@@ -223,7 +226,7 @@
             scroll-behavior: smooth;
             font-size: 14px;
             line-height: 1.6;
-            white-space: pre-wrap; /* Keeps code lines structured without breaking unnecessarily */
+            white-space: pre-wrap;
         }
 
         .log-line { margin-bottom: 4px; word-break: break-all; }
@@ -307,15 +310,15 @@
 
         <div class="lobby-ad-space">
             <span>[ ADVERTISEMENT SPACE ]</span>
-            <p>Paste your Google AdSense code snippet inside this block for lobby monetization.</p>
+            <p>Google AdSense verification active.</p>
         </div>
     </div>
 
-    <!-- SECTION B: MAIN TERMINAL (NO ADS) -->
+    <!-- SECTION B: MAIN TERMINAL -->
     <div id="main-app">
         <header class="hud-header">
             <div><strong>[CYBER_CORE_OS]</strong> <span style="color:var(--dim-green);">// SYS_VER: 9.0.4</span></div>
-            <div>STATUS: <span style="color:var(--main-green);">ONLINE</span> | AUDIO: <span id="audio-status" style="color:var(--warn-yellow);">MUTED</span> | FULLSCREEN: <span style="color:var(--info-blue);">PRESS F11</span></div>
+            <div>STATUS: <span style="color:var(--main-green);">ONLINE</span> | FULLSCREEN: <span style="color:var(--info-blue);">PRESS F11</span></div>
         </header>
 
         <main class="workspace">
@@ -346,9 +349,7 @@
                     <button class="btn-matrix" onclick="executeQuickCmd('help')">HELP MENU</button>
                     <button class="btn-matrix" onclick="executeQuickCmd('scan')">RUN SYSTEM SCAN</button>
                     <button class="btn-matrix" onclick="executeQuickCmd('freewrite')">FREE WRITE MODE</button>
-                    <button class="btn-matrix" onclick="executeQuickCmd('blogs')">READ ARTICLES</button>
                     <button class="btn-matrix" onclick="executeQuickCmd('clear')">CLEAR SCREEN</button>
-                    <button class="btn-matrix" onclick="toggleAudio()">TOGGLE AUDIO SOUNDS</button>
                 </div>
 
                 <div class="widget-card">
@@ -413,36 +414,12 @@
             }
         });
 
-        /* Web Audio Synthesizer */
-        let audioEnabled = false;
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playBeep(freq = 800, duration = 0.04) {
-            if (!audioEnabled) return;
-            try {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.frequency.value = freq;
-                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + duration);
-            } catch (e) { }
-        }
-
-        function toggleAudio() {
-            audioEnabled = !audioEnabled;
-            if (audioEnabled && audioCtx.state === 'suspended') audioCtx.resume();
-            document.getElementById('audio-status').textContent = audioEnabled ? 'ENABLED' : 'MUTED';
-            printLog(audioEnabled ? '[AUDIO] Audio enabled.' : '[AUDIO] Audio muted.', 'log-info');
-        }
-
         /* Terminal Logging & Full-Length Line Free Write */
         const consoleOutput = document.getElementById('console-output');
         const cmdInput = document.getElementById('cmd-input');
         let isFreeWriteActive = false;
         let lineIndex = 0;
 
-        // Structured array of full-length C++ / Kernel exploit code lines
         const codeLines = [
             "int sock = socket(AF_INET, SOCK_STREAM, 0); struct sockaddr_in server;",
             "server.sin_addr.s_addr = inet_addr(\"192.168.1.104\"); server.sin_port = htons(8080);",
@@ -467,7 +444,6 @@
         function handleCommand(cmd) {
             const cleanCmd = cmd.trim().toLowerCase();
             printLog(`guest@cybercore:~$ ${cmd}`, 'log-dim');
-            playBeep(600);
             if (cleanCmd === '') return;
 
             switch (cleanCmd) {
@@ -497,7 +473,6 @@
         }
 
         cmdInput.addEventListener('keydown', (e) => {
-            playBeep(400);
             if (e.key === 'Enter') {
                 const val = cmdInput.value;
                 cmdInput.value = '';
@@ -516,7 +491,6 @@
                 e.preventDefault();
                 printLog(codeLines[lineIndex % codeLines.length], 'log-success');
                 lineIndex++;
-                playBeep(1100 + (Math.random() * 300), 0.02);
             }
         });
 
